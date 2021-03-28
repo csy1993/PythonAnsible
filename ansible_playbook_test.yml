@@ -1,0 +1,84 @@
+---
+# 固定格式，在首行放---
+
+# Hosts 执行的远程主机列表
+# Tasks 任务集
+# Varniables 内置变量或自定义变量在playbook中调用
+# Templates 模板，即使用模板语法的文件，比如配置文件等
+# Handlers 和notity结合使用，由特定条件触发的操作，满足条件方才执行，否则不执行
+# tags 标签，指定某条任务执行，用于选择运行playbook中的部分代码。
+
+# 在单个playbook文件中，可以连续三个连子号(---)区分多个play。还有选择性的连续三个点好(...)用来表示play的结尾，也可省略。
+# 次行开始正常写playbook的内容，一般都会写上描述该playbook的功能。
+# 使用#号注释代码。
+# 缩进必须统一，不能空格和tab混用。
+# 缩进的级别也必须是一致的，同样的缩进代表同样的级别，程序判别配置的级别是通过缩进结合换行实现的。
+# YAML文件内容和Linux系统大小写判断方式保持一致，是区分大小写的，k/v的值均需大小写敏感
+# k/v的值可同行写也可以换行写。同行使用:分隔。
+# v可以是个字符串，也可以是一个列表
+# 一个完整的代码块功能需要最少元素包括 name: task
+
+#ansible-playbook常用选项：
+# --check  or -C    #只检测可能会发生的改变，但不真正执行操作
+# --list-hosts      #列出运行任务的主机
+# --list-tags       #列出playbook文件中定义所有的tags
+# --list-tasks      #列出playbook文件中定义的所以任务集
+# --limit           #主机列表 只针对主机列表中的某个主机或者某个组执行
+# -f                #指定并发数，默认为5个
+# -t                #指定tags运行，运行某一个或者多个tags。（前提playbook中有定义tags）
+# -v                #显示过程  -vv  -vvv更详细
+
+# 定义执行主机，也可以为hosts中已定义的分组
+- hosts: 192.168.1.32
+  # 远程用户
+  remote_user: root
+  # 定义变量
+  vars:
+    http_port: 8088
+  # 引用变量文件
+  vars_files:
+    # 指定变量文件的path（这里可以是绝对路径，也可以是相对路径）
+    - ./vars.yml
+  # 定义任务集
+  # 每一个task必须有一个名称name,这样在运行playbook时，从其输出的任务执行信息中可以很清楚的辨别是属于哪一个task的，如果没有定义 name，action的值将会用作输出信息中标记特定的task。
+  # 每一个playbook中可以包含一个或者多个tasks任务列表，每一个tasks完成具体的一件事，（任务模块）比如创建一个用户或者安装一个软件等，在hosts中定义的主机或者主机组都将会执行这个被定义的tasks。
+  tasks: 
+    # 定义任务名
+    - name: create new file
+      # 调用指定模块和内容
+      file: name=/tmp/play_test.txt state=touch
+    - name: use setup info
+      # setup模块默认是获取主机信息的，有时候在playbook中需要用到，所以可以直接调用
+      file: name={{ ansible_fqdn }}.log state=touch
+    - name: create new user
+      # 使用sudo权限执行，因为是root用户，可不用 
+      # sudo_user: test
+      # sudo: yes
+      user: name=test3 system=yes shell=/sbin/nologin
+    - name: install package
+      yum: name=httpd
+      # 可以通过命令行中的形式来定义安装的软件名
+      # ansible-playbook -e "pkg=httpd" ansible_playbook_test.myl
+      # yum: name={{ pkg }}
+      # 一个playbook文件中，执行时如果想执行某一个任务，那么可以给每个任务集进行打标签，这样在执行的时候可以通过-t选择指定标签执行，还可以通过--skip-tags选择除了某个标签外全部执行等。
+      tags: install_httpd
+    - name: config httpd
+      # template模板提供了动态配置服务，使用jinja2语言，支持多种条件判断、循环、逻辑运算、比较操作等。相比于copy更有利于个性化管理
+      # 1、多数情况下都将template文件放在和playbook文件同级的templates目录下（手动创建），这样playbook文件中可以直接引用，会自动去找这个文件。如果放在别的地方，也可以通过绝对路径去指定。
+      # 2、模板文件后缀名为.j2。
+      template: src=./httpd.j2 dest=/etc/httpd/conf/httpd.conf backup=yes
+      # 定义执行一个动作(action)让handlers来引用执行，与handlers配合使用，当http文件发生改变，需要重启服务，可在处理器中操作
+      notify:
+        # notify要执行的动作，这里必须与handlers中的name定义内容一致
+        - restart apache
+    - name: copy index.html
+      copy: src=./index.html dest=/var/www/html/index.html backup=yes
+    - name: start httpd
+      # var1在前面被引用的vars.yml文件里声明
+      service: name={{ var1 }} state=started
+  # 处理器：根据tasks中notify定义的action触发执行相应的处理动作
+  handlers:
+    # 要与notify定义的内容相同
+    - name: restart apache
+      # 触发要执行的动作
+      service: name=httpd state=restarted
