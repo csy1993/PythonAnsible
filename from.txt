@@ -1,2 +1,5 @@
 https://www.cnblogs.com/keerya/p/7987886.html，ansible，整体完整但解释不够清晰
 https://www.cnblogs.com/yanjieli/p/10969299.html，Playbook，讲解不够系统连贯
+https://blog.csdn.net/kozazyh/article/details/88082965，Playbook become用法
+https://blog.51cto.com/liuzhengwei521/1962350，Playbook setup常用模块
+https://blog.51cto.com/diannaowa/1681885，Playbook when用法

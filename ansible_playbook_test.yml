@@ -34,7 +34,7 @@
   remote_user: root
   # 定义变量
   vars:
-    http_port: 8088
+    http_port: 8888
   # 引用变量文件
   vars_files:
     # 指定变量文件的path（这里可以是绝对路径，也可以是相对路径）
@@ -45,16 +45,47 @@
   tasks: 
     # 定义任务名
     - name: create new file
-      # 调用指定模块和内容
+      # 调用指定模块和内容,和ansible语法一致
       file: name=/tmp/play_test.txt state=touch
+
     - name: use setup info
       # setup模块默认是获取主机信息的，有时候在playbook中需要用到，所以可以直接调用
+      # ansible_all_ipv4_addresses：仅显示ipv4的信息
+      # ansible_devices：仅显示磁盘设备信息
+      # ansible_distribution：显示是什么系统，例：centos,suse等
+      # ansible_distribution_major_version：显示是系统主版本
+      # ansible_distribution_version：仅显示系统版本
+      # ansible_machine：显示系统类型，例：32位，还是64位
+      # ansible_eth0：仅显示eth0的信息
+      # ansible_hostname：仅显示主机名
+      # ansible_kernel：仅显示内核版本
+      # ansible_lvm：显示lvm相关信息
+      # ansible_memtotal_mb：显示系统总内存
+      # ansible_memfree_mb：显示可用系统内存
+      # ansible_memory_mb：详细显示内存情况
+      # ansible_swaptotal_mb：显示总的swap内存
+      # ansible_swapfree_mb：显示swap内存的可用内存
+      # ansible_mounts：显示系统磁盘挂载情况
+      # ansible_processor：显示cpu个数(具体显示每个cpu的型号)
+      # ansible_processor_vcpus：显示cpu个数(只显示总的个数)
+      # ansible_python_version：显示python版本
       file: name={{ ansible_fqdn }}.log state=touch
+
+    - name: judge version
+      shell: echo "Only on RedHat 6"
+      # when语句，可以控制任务的执行流程，支持jinja2的语法格式
+      when: ansible_distribution_major_version == "7"
+
     - name: create new user
-      # 使用sudo权限执行，因为是root用户，可不用 
+      # 使用sudo权限执行，因为是root用户，可不用
       # sudo_user: test
       # sudo: yes
+      # 新版本该用以下方法
+      # become：设置为yes激活权限提升。
+      # become_user ：更改为具有所需权限的用户。必须跟become: yes 一起使用。
+      # become_method ：覆盖ansible.cfg中设置的默认方法，设置为sudo / su / pbrun / pfexec / doas / dzdo / ksu / runas / machinectl
       user: name=test3 system=yes shell=/sbin/nologin
+
     - name: install package
       yum: name=httpd
       # 可以通过命令行中的形式来定义安装的软件名
@@ -62,6 +93,7 @@
       # yum: name={{ pkg }}
       # 一个playbook文件中，执行时如果想执行某一个任务，那么可以给每个任务集进行打标签，这样在执行的时候可以通过-t选择指定标签执行，还可以通过--skip-tags选择除了某个标签外全部执行等。
       tags: install_httpd
+
     - name: config httpd
       # template模板提供了动态配置服务，使用jinja2语言，支持多种条件判断、循环、逻辑运算、比较操作等。相比于copy更有利于个性化管理
       # 1、多数情况下都将template文件放在和playbook文件同级的templates目录下（手动创建），这样playbook文件中可以直接引用，会自动去找这个文件。如果放在别的地方，也可以通过绝对路径去指定。
@@ -71,11 +103,28 @@
       notify:
         # notify要执行的动作，这里必须与handlers中的name定义内容一致
         - restart apache
+
     - name: copy index.html
       copy: src=./index.html dest=/var/www/html/index.html backup=yes
+
     - name: start httpd
       # var1在前面被引用的vars.yml文件里声明
       service: name={{ var1 }} state=started
+
+    - name: echo items
+      shell: echo "{{ item }}"
+      # with_items迭代，当有需要重复性执行的任务时，可以使用迭代机制。对迭代项的引用，固定变量名为“item”，要在task中使用with_items给定要迭代的元素列表。
+      with_items:
+        - httpd
+        - apache
+        - nginx
+      # shell: echo "{{ item.name }} is {{ item.describe }}"
+      # # with_items迭代，当有需要重复性执行的任务时，可以使用迭代机制。对迭代项的引用，固定变量名为“item”，要在task中使用with_items给定要迭代的元素列表。
+      # with_items:
+      #   - { name:'httpd' ,describe:'nice'}
+      #   - { name:'apache' ,describe:'good'}
+      #   - { name:'nginx' ,describe:'ok'}
+
   # 处理器：根据tasks中notify定义的action触发执行相应的处理动作
   handlers:
     # 要与notify定义的内容相同
