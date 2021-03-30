@@ -32,9 +32,22 @@
 - hosts: 192.168.1.32
   # 远程用户
   remote_user: root
+  # 设置为yes激活权限提升。
+  become: yes
+  # 更改为具有所需权限的用户。必须跟become: yes 一起使用。
+  # become_user: root
+  # 覆盖ansible.cfg中设置的默认方法，设置为sudo / su / pbrun / pfexec / doas / dzdo / ksu / runas / machinectl
+  # become_method: sudo
   # 定义变量
   vars:
     http_port: 8888
+    # 定义多个服务信息，用于httpd.j2
+    server_info: 
+      - web1:
+        name: test1
+        path: /var/www/apache/web1
+      - web2:
+        name: test2
   # 引用变量文件
   vars_files:
     # 指定变量文件的path（这里可以是绝对路径，也可以是相对路径）
@@ -72,18 +85,11 @@
       file: name={{ ansible_fqdn }}.log state=touch
 
     - name: judge version
-      shell: echo "Only on RedHat 6"
+      shell: echo "Only on RedHat 6" >> /tmp/play_test.txt
       # when语句，可以控制任务的执行流程，支持jinja2的语法格式
       when: ansible_distribution_major_version == "7"
 
     - name: create new user
-      # 使用sudo权限执行，因为是root用户，可不用
-      # sudo_user: test
-      # sudo: yes
-      # 新版本该用以下方法
-      # become：设置为yes激活权限提升。
-      # become_user ：更改为具有所需权限的用户。必须跟become: yes 一起使用。
-      # become_method ：覆盖ansible.cfg中设置的默认方法，设置为sudo / su / pbrun / pfexec / doas / dzdo / ksu / runas / machinectl
       user: name=test3 system=yes shell=/sbin/nologin
 
     - name: install package

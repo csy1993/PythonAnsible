@@ -94,7 +94,21 @@ ServerAdmin root@localhost
 #
 #ServerName www.example.com:80
 
-#
+# 批量开放服务路径
+{% for info in server_info %}
+{% if info.path is defined %}
+<Directory /tmp/{{ info.path }}>
+    AllowOverride none
+    Require all denied
+</Directory>
+{% else %}
+<Directory /tmp>
+    AllowOverride none
+    Require all denied
+</Directory>
+{% endif %}
+{% endfor %}
+
 # Deny access to the entirety of your server's filesystem. You must
 # explicitly permit access to web content directories in other 
 # <Directory> blocks below.
